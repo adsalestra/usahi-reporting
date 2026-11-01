@@ -81,3 +81,17 @@
 .linkButton{border:0;background:none;padding:0;color:var(--navy);font-weight:750}
 .srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(max-width:740px){.reviewBar{align-items:flex-start;flex-direction:column}.adminTools{margin-left:0;padding-left:0;border-left:0}}
+
+/* --- While something is loading ------------------------------------------
+   A tile that reads "—" looks like a figure of zero, so each one keeps its own
+   shape and shows a moving bar where its number will be. */
+@keyframes skelSweep{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skeleton{display:block;border-radius:7px;background:linear-gradient(90deg,#eef2f8 25%,#dde6f3 38%,#eef2f8 62%);background-size:260% 100%;animation:skelSweep 1.3s ease-in-out infinite}
+.metricCard .skelValue{height:30px;width:60%;margin-top:3px}
+.metricCard .skelHint{height:11px;width:82%;margin-top:14px}
+.spin{animation:spin .9s linear infinite}
+.loadingTag{display:inline-flex;align-items:center;gap:8px;color:#6a7b94;font-size:12px;font-weight:650}
+.loadingBlock{display:grid;place-items:center;gap:12px;padding:58px 20px;color:#8292a8;background:#fff;border:1px solid var(--line);border-radius:15px}
+.loadingBlock p{margin:0;font-size:13px}
+@media(prefers-reduced-motion:reduce){.skeleton,.spin{animation:none}}
