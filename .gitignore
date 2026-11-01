@@ -1,0 +1,17 @@
+# dependencies and build output
+node_modules
+.next
+*.tsbuildinfo
+.DS_Store
+
+# secrets - these belong in Vercel environment variables only
+.env
+.env.local
+.env.*.local
+
+# Private client handoff material. handoff/analysis_references/ holds Salesforce
+# lead and opportunity exports with customer names, phone numbers, emails and
+# revenue figures, and archived_previous_builds/ holds the delivery ZIPs.
+# handoff/SAFE_SHARING.md: never put this in a public repository. Keep it in a
+# private location shared only with authorised developers.
+handoff/

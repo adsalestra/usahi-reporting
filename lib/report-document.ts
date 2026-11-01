@@ -1,0 +1,7 @@
+/** Wraps a sanitized report body in the USAHI reading styles. No dependencies, so
+ *  the client bundle can reuse it for the design preview without pulling in the
+ *  sanitizer. */
+export function reportDocument(html:string){
+ const css=`:root{color-scheme:light}*{box-sizing:border-box}body{font:16px/1.7 -apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;color:#21314b;background:#fff;max-width:900px;margin:0 auto;padding:36px 32px}h1,h2,h3{color:#16357a;line-height:1.25;margin-top:1.6em}h1{font-size:30px}h2{font-size:23px;border-bottom:1px solid #e4eaf3;padding-bottom:10px}p{margin:12px 0}img{max-width:100%;height:auto;display:block;margin:18px auto;border-radius:9px}table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}th,td{border:1px solid #dfe5ee;padding:9px 12px;text-align:left}th{background:#edf3fb}a{color:#16357a;overflow-wrap:anywhere}blockquote{border-left:4px solid #cc2027;padding-left:16px;color:#5e6e85}figure{margin:22px 0}section.toc{background:#f4f7fc;border:1px solid #e4eaf3;border-radius:10px;padding:4px 24px 18px}section.toc h2{border:0;font-size:18px;margin-top:.8em}section.toc ul{margin:0;padding-left:20px}section.toc li{margin:4px 0}figcaption{font-size:13px;color:#66758b}@media(max-width:600px){body{padding:20px 14px;font-size:15px}h1{font-size:24px}}`;
+ return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body>${html}</body></html>`;
+}
