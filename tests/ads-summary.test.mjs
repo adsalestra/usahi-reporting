@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {toTable, summary, number, tableKey} from '../lib/ads.ts';
+import {toTable, summary, number, tableKey, resolveTab} from '../lib/ads.ts';
 
 // 46322 is the Google Sheets serial for 2026-10-27; the reader asks for serials
 // so a sheet set to a d/m/Y locale can never be read as a different month.
@@ -332,4 +332,55 @@ test('no single unqualified revenue figure is ever produced', () => {
   for (const key of ['wonSame', 'wonCohort', 'wonOpp']) assert.ok(key in oct, key + ' is missing');
   assert.ok(!('revenue' in oct));
   assert.ok(!('wonValue' in oct));
+});
+
+// --- Which tab holds the real rows -----------------------------------------
+
+// The live spreadsheet carries both: a hidden "Data - Campaigns" of raw daily
+// rows, and a visible "Campaigns" that is a date-filtered view of it. The view
+// opens with a date-range caption, so reading it yields a header row of
+// ["Date range", "2026-09-01", "to", ...] and every metric totals zero.
+const LIVE_TABS = [
+  'Date Range', 'Salesforce Leads', 'Reports', 'Updates', 'Replies',
+  'Opportunities', 'Google Ads Summary', 'Sheet Summary', 'Campaigns',
+  'Keywords', 'Leads', 'Sheet1', 'Data - Google Ads Summary',
+  'Data - Sheet Summary', 'Data - Campaigns', 'Data - Keywords',
+  'Data - Leads', 'Run Log'
+];
+
+test('the hidden raw tab is preferred over the filtered view of it', () => {
+  assert.equal(resolveTab('Google Ads Summary', LIVE_TABS), 'Data - Google Ads Summary');
+  assert.equal(resolveTab('Campaigns', LIVE_TABS), 'Data - Campaigns');
+  assert.equal(resolveTab('Keywords', LIVE_TABS), 'Data - Keywords');
+  assert.equal(resolveTab('Leads', LIVE_TABS), 'Data - Leads');
+  assert.equal(resolveTab('Sheet Summary', LIVE_TABS), 'Data - Sheet Summary');
+});
+
+test('tabs with no raw twin are read under their own name', () => {
+  assert.equal(resolveTab('Opportunities', LIVE_TABS), 'Opportunities');
+  assert.equal(resolveTab('Salesforce Leads', LIVE_TABS), 'Salesforce Leads');
+});
+
+test('a tab that is absent resolves to nothing rather than being guessed', () => {
+  assert.equal(resolveTab('Keywords', ['Opportunities']), '');
+});
+
+test('both names land in the same place once read', () => {
+  assert.equal(tableKey('Data - Google Ads Summary'), tableKey('Google Ads Summary'));
+  assert.equal(tableKey('Data - Campaigns'), 'campaigns');
+});
+
+test('the filtered view would have produced exactly the zeros that were seen', () => {
+  // Row 1 of the visible tab is the caption, row 2 the real header, row 3 a
+  // TOTAL. Read as-is, "Cost" is not a column at all, so spend reads zero
+  // while the sheet plainly shows 46,608.
+  const view = toTable([
+    ['Date range', '2026-09-01', 'to', '2026-11-01'],
+    ['Date', 'Cost', 'Impressions', 'Clicks'],
+    ['TOTAL', 46608.01, 856658, 11311],
+    ['2026-09-01', 628.16, 11555, 183]
+  ]);
+  assert.ok(!view.headers.includes('Cost'));
+  const s = summary({ google_ads_summary: view }, '2026-09-01', '2026-11-01');
+  assert.equal(s.ads.Cost ?? 0, 0);
 });

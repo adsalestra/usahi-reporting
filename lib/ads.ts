@@ -25,6 +25,17 @@ export function toTable(values:any[][]|undefined):Table{
 // and are deliberately not read here.
 export const TAB_LABELS=['Google Ads Summary','Sheet Summary','Campaigns','Keywords','Leads','Opportunities','Salesforce Leads'];
 export function tableKey(label:string){return label.replace('Data - ','').toLowerCase().replace(/\s+/g,'_')}
+/** The Ads script writes its raw daily rows into a hidden "Data - X" tab and
+ *  leaves the visible "X" tab as a date-filtered view of them. That view opens
+ *  with a date-range banner, so its first row is a caption rather than a header
+ *  and its second row is a TOTAL. Read the raw tab wherever one exists, and
+ *  fall back to the plain name for the tabs that have no twin (Opportunities,
+ *  Salesforce Leads). */
+export function resolveTab(label:string,titles:string[]){
+ const raw='Data - '+label;
+ if(titles.includes(raw))return raw;
+ return titles.includes(label)?label:'';
+}
 export async function getTables(){
  const ids=sourceIds();if(!ids.length)throw new Error('No Ads spreadsheet configured. Set GOOGLE_SHEETS_IDS in Vercel, then redeploy.');
  const sheets=await client();
@@ -44,18 +55,19 @@ export async function getTables(){
    throw new Error('Could not read spreadsheet '+(si+1)+': '+(error?.message||'unknown error'));
   }
   seenTabs.push(...titles);
-  const wanted=TAB_LABELS.filter(label=>titles.includes(label)&&!out[tableKey(label)]?.rows.length);
+  const wanted=TAB_LABELS.map(label=>({label,title:resolveTab(label,titles)}))
+   .filter(w=>w.title&&!out[tableKey(w.label)]?.rows.length);
   if(!wanted.length)continue;
   const reply=await sheets.spreadsheets.values.batchGet({
    spreadsheetId:id,
-   ranges:wanted.map(label=>`'${label.replace(/'/g,"''")}'!A1:AZ12000`),
+   ranges:wanted.map(w=>`'${w.title.replace(/'/g,"''")}'!A1:AZ12000`),
    valueRenderOption:'UNFORMATTED_VALUE',      // dates arrive as serial numbers,
    dateTimeRenderOption:'SERIAL_NUMBER'        // so no sheet locale can flip d/m
   });
   const ranges=reply.data.valueRanges||[];
-  wanted.forEach((label,i)=>{
+  wanted.forEach((w,i)=>{
    const table=toTable(ranges[i]?.values as any[][]);
-   if(table.headers.length)out[tableKey(label)]=table;
+   if(table.headers.length)out[tableKey(w.label)]=table;
   });
  }
  if(!Object.keys(out).length)throw new Error('None of the expected tabs were found. Looked for: '+TAB_LABELS.join(', ')+'. The spreadsheet has: '+(seenTabs.join(', ')||'no readable tabs')+'.');
