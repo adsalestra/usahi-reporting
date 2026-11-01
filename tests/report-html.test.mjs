@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cleanReport} from '../lib/sanitize.ts';
 import {reportDocument} from '../lib/report-document.ts';
+import {parseLinks, titleFromUrl} from '../lib/review-links.ts';
 
 test('scripts and event handlers never survive an import', () => {
   const out = cleanReport('<h1>Report</h1><script>alert(1)</script><p onclick="alert(2)">Body</p>');
@@ -64,4 +65,42 @@ test('uploading a whole .html file does not print its title or stylesheet', () =
   assert.ok(!clean.includes('font:16px'), 'the stylesheet leaked into the report');
   assert.ok(clean.includes('<h1>Weekly Update</h1>'));
   assert.ok(clean.includes('Six pages went live.'));
+});
+
+// --- Pasting a list of pages for the client to approve ----------------------
+
+test('a list copied out of a report is read despite its bullets and numbering', () => {
+  // Real newlines inside a template literal, because that is exactly how the
+  // list arrives when someone copies it out of the Word report.
+  const pasted = parseLinks(`1. https://usahomeimprovement.com/impact-windows/boca-raton/
+• https://usahomeimprovement.com/impact-windows/delray-beach/,
+   - https://usahomeimprovement.com/impact-doors/french/ 
+
+Service pages
+https://usahomeimprovement.com/about/`);
+  assert.deepEqual(pasted.map(p => p.url), [
+    'https://usahomeimprovement.com/impact-windows/boca-raton/',
+    'https://usahomeimprovement.com/impact-windows/delray-beach/',
+    'https://usahomeimprovement.com/impact-doors/french/',
+    'https://usahomeimprovement.com/about/'
+  ]);
+});
+
+test('the same page pasted twice is only asked about once', () => {
+  const pasted = parseLinks(`https://x.com/a/
+https://x.com/a/
+https://x.com/b/`);
+  assert.equal(pasted.length, 2);
+});
+
+test('a page is named from its own address', () => {
+  assert.equal(titleFromUrl('https://usahomeimprovement.com/impact-windows/boca-raton/'), 'Impact Windows — Boca Raton');
+  assert.equal(titleFromUrl('https://usahomeimprovement.com/about/'), 'About');
+  assert.equal(titleFromUrl('https://usahomeimprovement.com/'), 'Home page');
+  assert.equal(titleFromUrl('https://share.google/75MQcDuaz0BkgzxC5'), 'Google Business Profile post');
+});
+
+test('text with no links in it yields nothing rather than a bad row', () => {
+  assert.deepEqual(parseLinks(`Tasks done this week
+mailto:someone@example.com`), []);
 });

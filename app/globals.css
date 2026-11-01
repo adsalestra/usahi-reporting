@@ -49,3 +49,8 @@
 
 @media(max-width:1100px){.seoLayout{grid-template-columns:1fr}}
 @media(max-width:740px){.latestReport{padding:20px}.latestReport h3{font-size:19px}}
+
+/* Hint under a field in a dialog: explains what a paste may contain without
+   turning the label itself into a paragraph. */
+.modal .fieldHint{display:block;margin-top:6px;color:var(--muted);font-size:12.5px;line-height:1.5;font-weight:400}
+.modal .chipRow{margin:0 0 4px}
