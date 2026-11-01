@@ -49,3 +49,19 @@ test('the wrapper document carries USAHI styling and no script', () => {
   assert.ok(doc.includes('name="viewport"'));
   assert.ok(!doc.includes('<script'));
 });
+
+test('uploading a whole .html file does not print its title or stylesheet', () => {
+  // The docx converter writes a standalone document. Keeping the text inside
+  // <title> and <style> would open every such report with its own file name
+  // and then a wall of CSS.
+  const clean = cleanReport(
+    '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    '<title>USA Home Improvement_ Weekly Report (27 Oct 2026)</title>' +
+    '<style>body{font:16px/1.7 Arial;color:#21314b}</style></head>' +
+    '<body><h1>Weekly Update</h1><p>Six pages went live.</p></body></html>'
+  );
+  assert.ok(!clean.includes('USA Home Improvement_'), 'the file name leaked into the report');
+  assert.ok(!clean.includes('font:16px'), 'the stylesheet leaked into the report');
+  assert.ok(clean.includes('<h1>Weekly Update</h1>'));
+  assert.ok(clean.includes('Six pages went live.'));
+});
