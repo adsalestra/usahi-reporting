@@ -19,6 +19,23 @@ export function titleFromUrl(raw:string):string{
   .join(' \u2014 ');
 }
 
+/** An http(s) address written the one way, or '' when `raw` is not one. A page
+ *  is identified by this string everywhere, so a link that was typed into the
+ *  form and the same link pasted in a list have to agree on its spelling. */
+export function normalizeUrl(raw:string):string{
+ let url:URL;
+ try{url=new URL(String(raw||'').trim())}catch{return ''}
+ return url.protocol==='https:'||url.protocol==='http:'?url.toString():'';
+}
+
+/** The address as it reads in a dense row: no scheme, no "www.", no trailing
+ *  slash. What is left is the part that differs between two pages. */
+export function shortUrl(raw:string):string{
+ let url:URL;
+ try{url=new URL(raw)}catch{return raw}
+ return url.hostname.replace(/^www\./,'')+url.pathname.replace(/\/$/,'')+url.search;
+}
+
 export type PastedLink={title:string;url:string};
 
 /** Every http(s) address in `text`, one per line, in the order pasted and with
@@ -28,12 +45,8 @@ export function parseLinks(text:string):PastedLink[]{
  const out:PastedLink[]=[];const seen=new Set<string>();
  for(const line of String(text||'').split(/[\r\n]+/)){
   const cleaned=line.replace(/^[\s\u2022\u2013\u2014\-*\d.)]+/,'').trim().replace(/[,;]+$/,'');
-  if(!cleaned)continue;
-  let url:URL;
-  try{url=new URL(cleaned)}catch{continue}
-  if(url.protocol!=='https:'&&url.protocol!=='http:')continue;
-  const href=url.toString();
-  if(seen.has(href))continue;
+  const href=cleaned?normalizeUrl(cleaned):'';
+  if(!href||seen.has(href))continue;
   seen.add(href);
   out.push({title:titleFromUrl(href),url:href});
  }

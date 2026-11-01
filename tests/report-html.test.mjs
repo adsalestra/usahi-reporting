@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cleanReport} from '../lib/sanitize.ts';
 import {reportDocument} from '../lib/report-document.ts';
-import {parseLinks, titleFromUrl} from '../lib/review-links.ts';
+import {normalizeUrl, parseLinks, shortUrl, titleFromUrl} from '../lib/review-links.ts';
 
 test('scripts and event handlers never survive an import', () => {
   const out = cleanReport('<h1>Report</h1><script>alert(1)</script><p onclick="alert(2)">Body</p>');
@@ -103,4 +103,24 @@ test('a page is named from its own address', () => {
 test('text with no links in it yields nothing rather than a bad row', () => {
   assert.deepEqual(parseLinks(`Tasks done this week
 mailto:someone@example.com`), []);
+});
+
+// --- The two views of a page's address -----------------------------------
+
+test('an address is stored the one way, however it was typed', () => {
+  // The form and a pasted list have to agree, or the duplicate check misses.
+  assert.equal(normalizeUrl('  https://example.com/a  '), 'https://example.com/a');
+  assert.equal(normalizeUrl('https://example.com'), 'https://example.com/');
+  assert.equal(normalizeUrl('example.com/a'), '');
+  assert.equal(normalizeUrl('javascript:alert(1)'), '');
+  assert.equal(normalizeUrl(''), '');
+});
+
+test('the compact row shows the part of the address that differs', () => {
+  assert.equal(shortUrl('https://www.usahomeimprovement.com/impact-windows/boca-raton/'),
+    'usahomeimprovement.com/impact-windows/boca-raton');
+  assert.equal(shortUrl('https://usahomeimprovement.com/'), 'usahomeimprovement.com');
+  assert.equal(shortUrl('https://x.com/a?b=1'), 'x.com/a?b=1');
+  // Not an address at all: print it rather than lose the row.
+  assert.equal(shortUrl('not a url'), 'not a url');
 });

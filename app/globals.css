@@ -54,3 +54,30 @@
    turning the label itself into a paragraph. */
 .modal .fieldHint{display:block;margin-top:6px;color:var(--muted);font-size:12.5px;line-height:1.5;font-weight:400}
 .modal .chipRow{margin:0 0 4px}
+
+/* --- Reviews: the two layouts, and the controls only the team sees -------- */
+.reviewBar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 22px}
+.reviewBar .reviewStatusBar,.reviewBar .chipRow{margin:0}
+/* The team's own buttons sit apart from the client's decision buttons, so it
+   reads at a glance which side of the conversation each one belongs to. */
+.adminTools{display:flex;gap:10px;margin-left:auto;padding-left:13px;border-left:1px solid var(--line)}
+.modalActions.spread{justify-content:space-between;align-items:center}
+.modalActions.spread span{display:flex;gap:9px}
+/* Compact: one page per row, its address shown, comments opening underneath. */
+.compactReviews{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+/* A long approval list is the point of this view, so it scrolls as far as the
+   screen allows rather than inside the 350px box the data panels use. */
+.compactReviews .tableScroll{max-height:calc(100vh - 290px)}
+.compactReviews table{font-size:12.5px}
+.compactReviews th,.compactReviews td{padding:13px 16px;vertical-align:middle}
+.compactReviews td.cellTitle{font-weight:700;color:#21385d;white-space:normal;min-width:170px}
+.compactReviews td.cellLink{max-width:340px;overflow:hidden;text-overflow:ellipsis}
+.compactReviews td.cellLink a{display:inline-flex;align-items:center;gap:5px;font-weight:600;text-decoration:none}
+.compactReviews td.cellActions{text-align:right;white-space:nowrap}
+.compactReviews td.cellActions .btn{margin-left:6px}
+.compactReviews tr.commentRow td{background:#f8fafd;white-space:normal;padding:0 16px}
+.compactReviews .commentBox{border-top:0;margin:0;padding:6px 0 14px}
+.btn.tiny{padding:7px 9px;border-radius:8px}
+.linkButton{border:0;background:none;padding:0;color:var(--navy);font-weight:750}
+.srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media(max-width:740px){.reviewBar{align-items:flex-start;flex-direction:column}.adminTools{margin-left:0;padding-left:0;border-left:0}}

@@ -54,9 +54,11 @@ A new, independent Next.js client reporting platform. The original Apps Script d
 Saved HTML is sanitized. No JavaScript executes in reports. The upload maximum is 3.5MB because of serverless request size constraints. For larger reports, compress screenshots or use images from reliable HTTPS URLs. The system does **not** upload Word or Google Docs automatically; export/convert to HTML first. Relative image file paths from a downloaded HTML package will not work. Use embedded `data:image/png;base64,...` images or HTTPS image URLs.
 
 ### E. Ask for page approval
-1. Admin → **Reviews → Request review**, paste page title/URL, add instructions.
+1. Admin → **Reviews → Request review**. Either one page (title + URL), or **Paste many links** for a whole list, one per line; each page is named from its own address and a page already on the list is skipped.
 2. Client signs in → **Reviews**, opens link, clicks Approve or writes a reason and chooses Request changes.
 3. Comments and decisions are stored with email + timestamp.
+4. **Cards** or **Compact** switches the layout; the choice is remembered per browser. Compact is one page per row with its address shown.
+5. **Edit** and **Remove** appear only for the admin. The client can open the page, comment, approve or request changes — nothing else.
 
 ### F. Customize company branding
 - Edit `app/globals.css`: `--navy`, `--red`, and other design tokens.

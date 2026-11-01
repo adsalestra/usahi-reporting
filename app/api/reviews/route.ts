@@ -1,5 +1,5 @@
 import {principal,serviceSupabase,jsonError,configGate,adminDenied} from '@/lib/supabase';
-import {parseLinks} from '@/lib/review-links';
+import {normalizeUrl,parseLinks} from '@/lib/review-links';
 export const dynamic='force-dynamic';
 export async function GET(req:Request){
  const blocked=configGate();if(blocked)return blocked;
@@ -15,7 +15,7 @@ export async function POST(req:Request){
  const blocked=configGate();if(blocked)return blocked;
  const user=await principal(req);if(!user?.admin)return adminDenied();
  const body=await req.json().catch(()=>({}));
- const title=String(body.title||'').trim().slice(0,180),target_url=String(body.url||'').trim().slice(0,2000),description=String(body.description||'').trim().slice(0,4000);
+ const title=String(body.title||'').trim().slice(0,180),target_url=normalizeUrl(String(body.url||'').slice(0,2000)),description=String(body.description||'').trim().slice(0,4000);
  // A pasted list of pages. Titles come from the addresses themselves, and a
  // page already waiting for a decision is left alone rather than duplicated.
  const pasted=parseLinks(String(body.links||''));
@@ -34,7 +34,7 @@ export async function POST(req:Request){
  }
  if(String(body.links||'').trim())return jsonError('No web addresses found in that list. Paste one link per line, each starting with https://');
  if(!title)return jsonError('Add a title');
- try{const url=new URL(target_url);if(!['https:','http:'].includes(url.protocol))throw new Error();}catch{return jsonError('Use a full https:// page URL')}
+ if(!target_url)return jsonError('Use a full https:// page URL');
  const {data,error}=await serviceSupabase().from('review_items').insert({title,target_url,description,created_by:user.email}).select('*').single();
  return error?jsonError(error.message,500):Response.json({item:data},{status:201});
 }
