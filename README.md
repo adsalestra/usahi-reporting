@@ -109,9 +109,9 @@ npm run build    # production build
 ```
 All four pass on Node 24 with Next 16.4.3. Browser testing with your Google/Supabase accounts is still required; offline packaging cannot validate remote permissions or live spreadsheet shape.
 
-Once deployed, open `/api/health` to see which environment variables Vercel actually received. It returns yes/no per setting and never returns a key, an email or a spreadsheet ID:
+Once deployed, open `/api/health` to see which environment variables Vercel actually received, and which commit is serving the site. It returns yes/no per setting and never returns a key, an email or a spreadsheet ID:
 ```json
-{"ok":false,"checks":{"supabase":false,...},"missing":["ADMIN_EMAIL"],"mode":"design preview"}
+{"ok":false,"checks":{"supabase":false,...},"missing":["ADMIN_EMAIL"],"commit":"7855652","mode":"design preview"}
 ```
 
 ## Turning the weekly Word report into an HTML upload
