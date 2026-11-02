@@ -34,8 +34,13 @@ export async function POST(req:Request){
   const have=new Set((existing||[]).map(r=>r.target_url));
   const fresh=pasted.filter(link=>!have.has(link.url));
   if(fresh.length){
+   // One insert gives every row the same default timestamp, and the list is
+   // sorted on that, so a whole quarter pasted at once comes back in an order
+   // Postgres is free to change between reads. A millisecond apart keeps the
+   // list in the order it was pasted, section by section.
+   const base=Date.now()-fresh.length;
    const {error}=await db.from('review_items')
-    .insert(fresh.map(link=>({title:link.title,target_url:link.url,description,created_by:user.email})));
+    .insert(fresh.map((link,i)=>({title:link.title,target_url:link.url,description,created_by:user.email,created_at:new Date(base+i).toISOString()})));
    if(error)return jsonError(error.message,500);
   }
   return Response.json({added:fresh.length,skipped:pasted.length-fresh.length},{status:fresh.length?201:200});
