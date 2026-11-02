@@ -8,6 +8,10 @@ import type {Session} from '@supabase/supabase-js';
 type Tab='overview'|'reports'|'reviews';
 type Report={id:string;title:string;report_date:string;category:string;summary:string;status:string;created_at:string;published_at?:string};
 type Review={id:string;title:string;target_url:string;description:string;status:string;created_at:string};
+type Point={period:string;label:string;branded:number;nonBranded:number;impressions:number};
+type Totals={clicks:number;impressions:number;ctr:number|null;position:number|null};
+type QueryRow={query:string;clicks:number;impressions:number;ctr:number;position:number};
+type SeoData={configured:boolean;site:string;step:string;brandTerms:string[];nonBranded:Totals;branded:Totals;series:Point[];trend:{first:number;second:number;change:number|null};queries:QueryRow[]};
 type Event={id:string;review_id:string;action:string;message:string;actor:string;created_at:string};
 type SalesforceCounts={dateColumn:string;leads:number;converted:number;unreadableDates:number;total:number};
 type OppTotals={count:number;value:number;estimates:number;estimateValue:number;won:number;wonValue:number;wonShare:number|null;spend:number;roas:number|null;pipelineRoas:number|null;costPerEstimate:number|null;costPerWon:number|null};
@@ -21,16 +25,51 @@ const pct=(n:number|null|undefined,d=0)=>n==null?'—':(n*100).toFixed(d)+'%';
 const monthLabel=(m:string)=>{const [y,mo]=m.split('-');return new Date(Number(y),Number(mo)-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'})};
 const human=(s:string)=>{try{return new Date(s+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}catch{return s}};
 const statusLabel=(s:string)=>s==='changes_requested'?'Changes requested':s;
+/** The answer to "is it improving", in the tile itself: the back half of the
+ *  range against the front half. A range too short to halve says nothing. */
+const changeHint=(t:{change:number|null})=>{
+ if(t.change==null)return 'Clicks from non-branded searches';
+ const move=Math.abs(t.change*100);
+ if(move<2)return 'Level with the first half of this range';
+ return `${t.change>0?'Up':'Down'} ${move.toFixed(0)}% against the first half of this range`;
+};
+const share=(s:{nonBranded:{clicks:number};branded:{clicks:number}})=>{
+ const all=s.nonBranded.clicks+s.branded.clicks;
+ return all?Math.round(s.nonBranded.clicks/all*100)+'%':'—';
+};
 const iso=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 function daysBack(n:number){const d=new Date();d.setDate(d.getDate()-n);return iso(d)}
 async function request(path:string,token:string,options?:RequestInit){const response=await fetch(path,{...options,headers:{Authorization:`Bearer ${token}`,...(options?.headers||{})},cache:'no-store'});const data=await response.json().catch(()=>({error:'Unexpected server response'}));if(!response.ok)throw new Error(data.error||'Request failed');return data}
 const demoReports:Report[]=[{id:'sample-weekly',title:'Weekly SEO Update',report_date:'2026-10-27',category:'Weekly SEO',summary:'24 location pages, 12 service pages, a Google Business Profile post and website fixes.',status:'published',created_at:''},{id:'sample-technical',title:'SEO Work & Technical Review',report_date:'2026-10-06',category:'Technical SEO',summary:'Location page work, content updates, technical corrections and visual evidence.',status:'published',created_at:''}];
 const demoHtml=`<h1>Weekly SEO Update</h1><p><strong>27 October 2026</strong></p><h2>Work completed</h2><p>Uploaded 24 location pages using the updated design and published 12 service pages.</p><h2>Google Business Profile</h2><p>Published a post for the Hollywood area.</p><h2>Website updates</h2><p>Added license information to the announcement bar and corrected a contact number on a blog page.</p><h2>Pages published</h2><ul><li><a href="https://www.gousahi.com/">Example published page</a> — links inside a report open in a new tab.</li></ul>`;
 const demoReviews:Review[]=[{id:'sample-review-1',title:'Impact Windows — Hollywood',target_url:'https://www.gousahi.com/',description:'Example request. Please check the wording and approve for publication.',status:'pending',created_at:'2026-10-28T09:00:00Z'},{id:'sample-review-2',title:'Roofing — Fort Lauderdale',target_url:'https://www.gousahi.com/',description:'Example request that the client already approved.',status:'approved',created_at:'2026-10-21T09:00:00Z'}];
+// Preview mode has no Search Console behind it, so the panel shows a shaped
+// example rather than an empty frame. Real deployments never reach this.
+const demoSeo:SeoData=(()=>{
+ const weeks=[31,28,35,33,41,38,47,52,49,58,63,61,72];
+ const brand=[44,46,43,45,47,44,46,48,45,47,49,46,48];
+ const series=weeks.map((n,i)=>{
+  const d=new Date(Date.UTC(2026,7,3)+i*7*86400000);
+  return {period:d.toISOString().slice(0,10),label:d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}),
+   nonBranded:n,branded:brand[i],impressions:n*34};
+ });
+ const clicks=weeks.reduce((a,b)=>a+b,0);
+ return {configured:true,site:'https://example.com/',step:'week',brandTerms:['example brand'],
+  nonBranded:{clicks,impressions:clicks*34,ctr:1/34,position:14.2},
+  branded:{clicks:brand.reduce((a,b)=>a+b,0),impressions:2100,ctr:.28,position:1.4},
+  series,trend:{first:206,second:303,change:(303-206)/206},
+  queries:[
+   {query:'impact windows miami',clicks:64,impressions:2210,ctr:.029,position:9.4},
+   {query:'hurricane impact doors cost',clicks:41,impressions:1680,ctr:.024,position:12.1},
+   {query:'roof replacement boca raton',clicks:33,impressions:1410,ctr:.023,position:15.7},
+   {query:'are impact windows required in florida',clicks:28,impressions:980,ctr:.029,position:7.8},
+   {query:'vinyl vs aluminum windows',clicks:22,impressions:1130,ctr:.019,position:18.3}
+  ]};
+})();
 const demoEvents:Event[]=[{id:'sample-event-1',review_id:'sample-review-2',action:'comment',message:'Example comment. Looks good, one small wording change on the second heading.',actor:'client@example.com',created_at:'2026-10-21T10:30:00Z'},{id:'sample-event-2',review_id:'sample-review-2',action:'approved',message:'',actor:'client@example.com',created_at:'2026-10-22T08:15:00Z'}];
 export default function Dashboard(){
  const [session,setSession]=useState<Session|null>(null),[authReady,setAuthReady]=useState(false),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[authError,setAuthError]=useState(''),[logging,setLogging]=useState(false);
- const [tab,setTab]=useState<Tab>('overview'),[admin,setAdmin]=useState(false),[reports,setReports]=useState<Report[]>([]),[reviews,setReviews]=useState<Review[]>([]),[events,setEvents]=useState<Event[]>([]),[ads,setAds]=useState<AdData|null>(null),[adsError,setAdsError]=useState('');
+ const [tab,setTab]=useState<Tab>('overview'),[admin,setAdmin]=useState(false),[reports,setReports]=useState<Report[]>([]),[reviews,setReviews]=useState<Review[]>([]),[events,setEvents]=useState<Event[]>([]),[ads,setAds]=useState<AdData|null>(null),[adsError,setAdsError]=useState(''),[seo,setSeo]=useState<SeoData|null>(null),[seoError,setSeoError]=useState(''),[seoLoading,setSeoLoading]=useState(false);
  // A spreadsheet read takes a few seconds, and until now the tiles sat on a row
  // of dashes that looked exactly like a figure of zero. Start both of these
  // loading, so the first paint already says the numbers are on their way.
@@ -42,11 +81,19 @@ export default function Dashboard(){
  useEffect(()=>{if(!supabase){setAuthReady(true);return}supabase.auth.getSession().then(({data})=>{setSession(data.session);setAuthReady(true)});const {data:{subscription}}=supabase.auth.onAuthStateChange((_evt,s)=>setSession(s));return()=>subscription.unsubscribe()},[]);
  const load=useCallback(async()=>{if(!token)return;setListLoading(true);try{const [r,v,me]=await Promise.all([request('/api/reports',token),request('/api/reviews',token),request('/api/auth/me',token)]);setReports(r.reports);setReviews(v.items);setEvents(v.events);setReviewsCut(!!v.truncated);setAdmin(!!me.user.admin)}catch(e:any){setNotice(e.message)}finally{setListLoading(false)}},[token]);
  const loadAds=useCallback(async()=>{if(!token)return;setAdsError('');setAdsLoading(true);try{const d=await request(`/api/ads?from=${from}&to=${to}`,token);setAds(d)}catch(e:any){setAds(null);setAdsError(e.message)}finally{setAdsLoading(false)}},[token,from,to]);
- useEffect(()=>{if(token)load()},[token,load]);useEffect(()=>{if(token&&tab==='overview')loadAds()},[token,tab,loadAds]);
+ // Search Console is a separate read and a slower one, so it loads beside the
+ // Ads figures rather than holding them up. Not being set up is not an error:
+ // the panel simply stays out of the page.
+ const loadSeo=useCallback(async()=>{if(!token)return;setSeoError('');setSeoLoading(true);
+  try{const d=await request(`/api/search?from=${from}&to=${to}`,token);setSeo(d.configured?d:null)}
+  catch(e:any){setSeo(null);setSeoError(e.message)}finally{setSeoLoading(false)}},[token,from,to]);
+ useEffect(()=>{if(token)load()},[token,load]);
+ useEffect(()=>{if(token&&tab==='overview'){loadAds();loadSeo()}},[token,tab,loadAds,loadSeo]);
  async function login(e:React.FormEvent){e.preventDefault();if(!supabase)return;setLogging(true);setAuthError('');const {error}=await supabase.auth.signInWithPassword({email,password});if(error)setAuthError(error.message);setLogging(false)}
  async function logout(){await supabase?.auth.signOut();setSession(null);setReports([]);setAds(null)}
  const demo=!setupReady;
  const shownReviews=demo?demoReviews:reviews, shownEvents=demo?demoEvents:events;
+ const shownSeo=demo?demoSeo:seo;
  /** A 12-page technical report reads better full screen than in a modal, and
   *  this is also how the client prints one. The HTML has already been through
   *  the sanitizer, and the blob is revoked once the new tab has taken it. */
@@ -121,7 +168,7 @@ export default function Dashboard(){
  <aside className="sidebar"><div className="wordmark"><img src="/usahi-logo.png" alt="USA Home Improvement" className="sidebarLogo"/><small className="workspaceCaption">Marketing workspace</small></div><div className="sideCaption">WORKSPACE</div><nav className="navLinks" aria-label="Main navigation">{([{key:'overview',label:'Overview',icon:LayoutDashboard},{key:'reports',label:'Reports',icon:FileText},{key:'reviews',label:'Reviews',icon:MessageSquare}] as const).map(item=><button key={item.key} className={tab===item.key?'selected':''} onClick={()=>{setTab(item.key);setActiveReport(null)}}><item.icon size={18}/>{item.label}{item.key==='reviews'&&shownReviews.filter(x=>x.status==='pending').length>0&&<span className="navCount">{shownReviews.filter(x=>x.status==='pending').length}</span>}</button>)}</nav><div className="sidebarBottom"><div className="secure"><ShieldCheck size={16}/> {demo?'Preview mode':'Private workspace'}</div>{!demo&&<button className="signout" onClick={logout}><LogOut size={16}/> Sign out</button>}</div></aside>
  <div className="mainArea"><header className="topbar"><div><span className="crumb">USAHI / {tab==='overview'?'Overview':tab==='reports'?'Reports':'Reviews'}</span></div><div className="userArea"><span className="liveDot"/> {demo?'Design preview':admin?'Administrator':'Client view'} <span className="userAvatar">{demo?'P':(session?.user.email||'U')[0].toUpperCase()}</span></div></header>
  <main className="content">{demo&&<div className="demoNote"><AlertCircle size={16}/> Preview mode. The layout uses example content from your supplied report. Connect Supabase to enable login, publishing, and reviews.</div>}{notice&&<div className="notice" role="status">{notice}<button onClick={()=>setNotice('')} aria-label="Dismiss"><X size={15}/></button></div>}
- {tab==='overview'&&<><div className="pageHeading"><div><div className="eyebrow">MARKETING PERFORMANCE</div><h1>Overview</h1><p>What happened, what it means, and what needs attention.</p></div><div className="dateToolbar"><select aria-label="Reporting date range" value={period} onChange={e=>setRange(e.target.value)}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="mtd">This month</option><option value="custom">Custom range</option></select>{period==='custom'&&<><input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)}/><input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)}/></>}<button className="iconButton" onClick={loadAds} title={adsLoading?'Loading…':'Refresh'} aria-label={adsLoading?'Loading':'Refresh'} disabled={adsLoading}><RefreshCw size={17} className={adsLoading?'spin':undefined}/></button></div></div>
+ {tab==='overview'&&<><div className="pageHeading"><div><div className="eyebrow">MARKETING PERFORMANCE</div><h1>Overview</h1><p>What happened, what it means, and what needs attention.</p></div><div className="dateToolbar"><select aria-label="Reporting date range" value={period} onChange={e=>setRange(e.target.value)}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="mtd">This month</option><option value="custom">Custom range</option></select>{period==='custom'&&<><input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)}/><input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)}/></>}<button className="iconButton" onClick={()=>{loadAds();loadSeo()}} title={adsLoading?'Loading…':'Refresh'} aria-label={adsLoading?'Loading':'Refresh'} disabled={adsLoading}><RefreshCw size={17} className={adsLoading?'spin':undefined}/></button></div></div>
  <section className="heroIntro"><div><div className="heroKicker">AT A GLANCE</div><h2>One place for the work behind the numbers.</h2><p>Google Ads performance and the SEO work your team delivers, without switching between reports.</p><button onClick={()=>setTab('reports')} className="textLink">Browse SEO reports <ArrowUpRight size={15}/></button></div><div className="heroPattern"><div className="statHalo"><ChartNoAxesColumn size={42}/></div></div></section>
  <div className="sectionRow"><h2>Google Ads performance</h2>{adsLoading?<span className="loadingTag" role="status"><RefreshCw size={13} className="spin"/> Reading the sheet…</span>:<span className="smallMuted">{human(from)} – {human(to)}</span>}</div>
  {adsError&&<div className="softWarning"><AlertCircle size={17}/><div><b>Ads connection needs attention</b><p>{adsError}. Your existing Ads spreadsheet has not been changed.</p></div></div>}
@@ -140,6 +187,22 @@ export default function Dashboard(){
   {label:'Cost per closed won',value:ads?.oppTotals.costPerWon==null?'—':usd(ads.oppTotals.costPerWon),hint:'Ad spend ÷ deals won',icon:'$'}
  ].map(metricCard)}</div>
  <p className="smallMuted">Google Ads spend and Salesforce deals are separate accounting systems, so every cost and ROAS figure here divides one by the other rather than following a single sale end to end. A quote is not revenue: pipeline ROAS counts money that has only been offered.{!!ads?.salesforce?.unreadableDates&&<> {fmt(ads.salesforce.unreadableDates)} lead {ads.salesforce.unreadableDates===1?'row has':'rows have'} no readable {ads.salesforce.dateColumn||'date'}, so {ads.salesforce.unreadableDates===1?'it is':'they are'} not counted in any date range.</>}</p>
+ {shownSeo?.configured&&<>
+ <div className="sectionRow"><h2>Organic search &mdash; non-branded</h2>{seoLoading?<span className="loadingTag" role="status"><RefreshCw size={13} className="spin"/> Reading Search Console&hellip;</span>:<span className="smallMuted">{human(from)} &ndash; {human(to)}</span>}</div>
+ <p className="sectionLead">Searches that do not name the company. This is the part of Google traffic the SEO work has to earn.</p>
+ <div className="metricGrid">{[
+  {label:'Non-branded clicks',value:shownSeo.nonBranded.clicks?fmt(shownSeo.nonBranded.clicks):'0',hint:changeHint(shownSeo.trend),icon:'↗'},
+  {label:'Non-branded impressions',value:fmt(shownSeo.nonBranded.impressions),hint:'Times a page was seen in results',icon:'◎'},
+  {label:'Average position',value:shownSeo.nonBranded.position==null?'—':shownSeo.nonBranded.position.toFixed(1),hint:'Lower is better',icon:'#'},
+  {label:'Non-branded share',value:share(shownSeo),hint:`${fmt(shownSeo.branded.clicks)} branded clicks in the same dates`,icon:'%'}
+ ].map(metricCard)}</div>
+ {shownSeo.series.length>1&&<article className="panel chartPanel"><TrendChart points={shownSeo.series} step={shownSeo.step}/></article>}
+ {!!shownSeo.queries.length&&<details className="queryPanel"><summary><Search size={16}/> Top non-branded searches ({shownSeo.queries.length})</summary>
+  <div className="tableScroll"><table><thead><tr><th>Search</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Position</th></tr></thead>
+  <tbody>{shownSeo.queries.map(q=><tr key={q.query}><td>{q.query}</td><td>{fmt(q.clicks)}</td><td>{fmt(q.impressions)}</td><td>{pct(q.ctr,1)}</td><td>{q.position.toFixed(1)}</td></tr>)}</tbody></table></div></details>}
+ <p className="smallMuted">Branded searches are the ones containing {shownSeo.brandTerms.map(t=>'“'+t+'”').join(', ')}. Search Console leaves out rare searches that could identify a person, and its figures run two to three days behind.</p>
+ </>}
+ {seoError&&<div className="softWarning"><AlertCircle size={17}/><div><b>Search Console is not connected yet</b><p>{seoError}</p></div></div>}
  <div className="sectionRow"><h2>SEO work</h2><span className="smallMuted">Written up by your team, with the evidence attached</span></div>
  <div className="seoLayout">
   {latestReport
@@ -273,5 +336,49 @@ function MonthTable({rows,hasSalesforce}:{rows:any[];hasSalesforce:boolean}){
   {rows.length>open&&<button className="btn subtle" onClick={()=>setOpen(n=>n+12)}>Show {Math.min(12,rows.length-open)} more months</button>}
   <p className="smallMuted">&ldquo;Sold same month&rdquo; is the money whose lead arrived and whose contract took effect in that one month. &ldquo;All from this month&rsquo;s leads&rdquo; is everything that lead eventually became, however long it took — so the first is part of the second, and the gap between them is the money that landed later. Every opportunity counts as an estimate, whatever stage it reached.</p>
  </article>;
+}
+/** The one picture the client asked for: non-branded clicks over time, with
+ *  branded behind it for scale. Drawn by hand rather than pulling in a chart
+ *  library, because two lines and an axis do not need one. */
+function TrendChart({points,step}:{points:Point[];step:string}){
+ const W=760,H=260,L=46,R=14,T=16,B=34;
+ const top=Math.max(1,...points.map(p=>Math.max(p.nonBranded,p.branded)));
+ // Clicks are whole numbers, so never divide a very quiet range into quarters
+ // of one: four is the smallest top with four distinct labels under it.
+ const ceiling=Math.max(4,niceTop(top));
+ const x=(i:number)=>points.length<2?L+(W-L-R)/2:L+(i*(W-L-R))/(points.length-1);
+ const y=(v:number)=>T+(H-T-B)*(1-v/ceiling);
+ const path=(pick:(p:Point)=>number)=>points.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)} ${y(pick(p)).toFixed(1)}`).join(' ');
+ const ticks=[...new Set([0,.25,.5,.75,1].map(f=>Math.round(ceiling*f)))];
+ const every=Math.max(1,Math.ceil(points.length/7));
+ return <div className="chartWrap">
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Non-branded clicks per ${step}`} className="trendChart">
+   {ticks.map(v=><g key={v}>
+    <line x1={L} x2={W-R} y1={y(v)} y2={y(v)} className="gridLine"/>
+    <text x={L-9} y={y(v)+4} className="axisText" textAnchor="end">{fmt(v)}</text>
+   </g>)}
+   {/* Grouped so a phone-width screen can drop every other date in CSS: at
+       this width seven of them would print on top of one another. */}
+   <g className="xLabels">{points.map((p,i)=>i%every?null:<text key={p.period} x={x(i)} y={H-12} className="axisText" textAnchor="middle">{p.label}</text>)}</g>
+   <path d={path(p=>p.branded)} className="lineBranded"/>
+   <path d={path(p=>p.nonBranded)} className="lineNonBranded"/>
+   {points.map((p,i)=><g key={p.period}>
+    <circle cx={x(i)} cy={y(p.nonBranded)} r={points.length>40?2:3.5} className="dotNonBranded"/>
+    <title>{`${p.label}: ${fmt(p.nonBranded)} non-branded, ${fmt(p.branded)} branded`}</title>
+   </g>)}
+  </svg>
+  <div className="chartKey">
+   <span><i className="swatch nonBranded"/> Non-branded clicks</span>
+   <span><i className="swatch branded"/> Branded clicks</span>
+   <span className="smallMuted">One point per {step}</span>
+  </div>
+ </div>;
+}
+/** A top the four gridlines divide evenly, so the axis reads 0 / 20 / 40 / 60
+ *  / 80 and not 0 / 19 / 38 / 56 / 75. */
+function niceTop(v:number){
+ const scale=Math.pow(10,Math.floor(Math.log10(v/4)));
+ const step=[1,2,2.5,5,10].map(n=>n*scale).find(n=>n*4>=v)||scale*10;
+ return step*4;
 }
 function DataTable({title,rows,columns,labels}:{title:string;rows:any[];columns:string[];labels?:Record<string,string>}){return <article className="dataPanel"><h4>{title}</h4><div className="tableScroll"><table><thead><tr>{columns.map(c=><th key={c}>{labels?.[c]||c}</th>)}</tr></thead><tbody>{rows.slice(0,60).map((r,i)=><tr key={i}>{columns.map(c=><td key={c}>{typeof r[c]==='number'&&/cost|value/i.test(c)?usd(r[c]):r[c]??'—'}</td>)}</tr>)}</tbody></table></div>{!rows.length&&<p className="smallMuted">No records for these dates.</p>}{rows.length>60&&<p className="smallMuted">Showing first 60 of {rows.length}. Narrow dates to see more.</p>}</article>}

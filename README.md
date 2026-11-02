@@ -10,6 +10,7 @@ A new, independent Next.js client reporting platform. The original Apps Script d
 - Safe report display with server-side HTML sanitization and iframe sandbox.
 - Approve, request changes, and comment on proposed links; event history with verified user email.
 - Supabase email/password login, admin role limited to `ADMIN_EMAIL`.
+- Optional Search Console panel: non-branded clicks over time, branded shown behind it for scale.
 - Demo preview when Supabase is unconfigured; **no fake live metrics**.
 
 ## Installation — no terminal needed
@@ -47,20 +48,36 @@ A new, independent Next.js client reporting platform. The original Apps Script d
 
 **Privacy:** Ads account data and lead names are accessible to all authenticated dashboard users. Create accounts only for people permitted to see that information. For stricter role-based access, customize the authorization before onboarding more clients.
 
-### D. Publish a report (two steps)
+### D. Show non-branded search performance (optional)
+The Overview screen can draw clicks from searches that do **not** name the company,
+which is the part of Google traffic the SEO work has to earn. It uses the **same**
+service account as the spreadsheet above — no second key, no new integration.
+
+1. In the same Google Cloud project, enable the **Google Search Console API**.
+2. In https://search.google.com/search-console, open **Settings → Users and permissions → Add user**. Paste the `GOOGLE_SERVICE_ACCOUNT_EMAIL` address and give it **Restricted** permission. That is enough to read.
+3. In Vercel Environment Variables set `GSC_SITE_URL` to the property exactly as Search Console writes it: a URL property ends in a slash (`https://www.example.com/`), a domain property is written `sc-domain:example.com`.
+4. Optionally set `BRAND_TERMS` to a comma-separated list of brand spellings. Any search containing one of them counts as branded and is kept out of the non-branded figures. Spacing is ignored, so `usa hi` also matches `usahi`.
+5. Redeploy.
+
+Leave `GSC_SITE_URL` unset and the panel is simply absent; nothing else changes.
+Search Console publishes figures two to three days late and leaves out rare
+searches that could identify a person, so its totals sit a little below the full
+picture. That is Google's own behaviour, not a fault in the dashboard.
+
+### E. Publish a report (two steps)
 1. Prepare a self-contained HTML report using any editor or AI. Include headings, paragraphs, tables, internal/external links, and embedded images.
 2. Sign in as admin → **Reports → New report → Choose HTML report → Set title, date and report format → Preview → Publish report**.
 
 Saved HTML is sanitized. No JavaScript executes in reports. The upload maximum is 3.5MB because of serverless request size constraints. For larger reports, compress screenshots or use images from reliable HTTPS URLs. The system does **not** upload Word or Google Docs automatically; export/convert to HTML first. Relative image file paths from a downloaded HTML package will not work. Use embedded `data:image/png;base64,...` images or HTTPS image URLs.
 
-### E. Ask for page approval
+### F. Ask for page approval
 1. Admin → **Reviews → Request review**. Either one page (title + URL), or **Paste many links** for a whole list, one per line; each page is named from its own address and a page already on the list is skipped.
 2. Client signs in → **Reviews**, opens link, clicks Approve or writes a reason and chooses Request changes.
 3. Comments and decisions are stored with email + timestamp.
 4. **Cards** or **Compact** switches the layout; the choice is remembered per browser. Compact is one page per row with its address shown.
 5. **Edit** and **Remove** appear only for the admin. The client can open the page, comment, approve or request changes — nothing else.
 
-### F. Customize company branding
+### G. Customize company branding
 - Edit `app/globals.css`: `--navy`, `--red`, and other design tokens.
 - The exact USAHI logo embedded in the SEO document provided by the user is included at `public/usahi-logo.png`. You may replace it with a higher-resolution official file later.
 - Vercel → Settings → Domains: add an owned custom subdomain e.g. `reports.gousahi.com`; follow DNS instructions. This gives you a short branded URL.

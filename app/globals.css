@@ -95,3 +95,34 @@
 .loadingBlock{display:grid;place-items:center;gap:12px;padding:58px 20px;color:#8292a8;background:#fff;border:1px solid var(--line);border-radius:15px}
 .loadingBlock p{margin:0;font-size:13px}
 @media(prefers-reduced-motion:reduce){.skeleton,.spin{animation:none}}
+
+/* --- Organic search: the non-branded trend ------------------------------- */
+.sectionLead{color:#78869a;font-size:13.5px;margin:-6px 0 16px;line-height:1.65}
+.chartPanel{padding:20px 22px 14px;margin-top:14px}
+.chartWrap{min-width:0}
+.trendChart{width:100%;height:auto;display:block;overflow:visible}
+.gridLine{stroke:#eef2f8;stroke-width:1}
+.axisText{fill:#8d9bb0;font-size:11px;font-weight:600}
+/* The line the client is here to read is the solid one; branded sits behind
+   it, dashed and grey, only so the scale means something. */
+.lineNonBranded{fill:none;stroke:var(--navy);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.lineBranded{fill:none;stroke:#b9c6da;stroke-width:1.8;stroke-dasharray:5 4;stroke-linejoin:round}
+.dotNonBranded{fill:var(--navy)}
+.chartKey{display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-top:12px;color:#68788d;font-size:12px;font-weight:600}
+.chartKey span{display:inline-flex;align-items:center;gap:8px}
+.swatch{width:16px;height:3px;border-radius:2px;display:inline-block}
+.swatch.nonBranded{background:var(--navy)}
+.swatch.branded{background:#b9c6da}
+.queryPanel{background:#fff;border:1px solid var(--line);border-radius:14px;margin-top:14px;box-shadow:var(--shadow)}
+.queryPanel summary{display:flex;align-items:center;gap:9px;padding:16px 22px;cursor:pointer;font-weight:700;color:#2c4778}
+.queryPanel .tableScroll{max-height:420px;border-top:1px solid var(--line)}
+.queryPanel td:first-child{white-space:normal;min-width:200px}
+.queryPanel td:not(:first-child),.queryPanel th:not(:first-child){text-align:right}
+/* The chart is drawn in 760 units and then scaled to the column it sits in.
+   On a phone that is about a third of the size, so 11px axis text arrives as
+   four: enlarge it and show half the dates, which is all that fits anyway. */
+@media(max-width:640px){
+ .axisText{font-size:21px}
+ .trendChart .xLabels text:nth-child(even){display:none}
+ .chartPanel{padding:18px 16px 12px}
+}
