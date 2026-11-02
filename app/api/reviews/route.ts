@@ -1,15 +1,23 @@
 import {principal,serviceSupabase,jsonError,configGate,adminDenied} from '@/lib/supabase';
 import {normalizeUrl,parseLinks} from '@/lib/review-links';
 export const dynamic='force-dynamic';
+/** Also PostgREST's own default ceiling, so a short read means the list really
+ *  has outgrown one request rather than just this number. */
+export const REVIEW_LIMIT=1000;
 export async function GET(req:Request){
  const blocked=configGate();if(blocked)return blocked;
  const user=await principal(req);if(!user)return jsonError('Sign in required',401);
+ // A whole quarter of page work is sent for approval in one or two pastes, and
+ // the list is ordered newest first, so a cap near the size of a single batch
+ // drops the oldest requests off the screen — the ones still waiting for a
+ // decision — without saying so. Keep the ceiling well clear of that.
  const db=serviceSupabase();const [a,b]=await Promise.all([
-  db.from('review_items').select('*').order('created_at',{ascending:false}).limit(120),
-  db.from('review_events').select('id,review_id,action,message,actor,created_at').order('created_at',{ascending:true}).limit(1000)
+  db.from('review_items').select('*').order('created_at',{ascending:false}).limit(REVIEW_LIMIT),
+  db.from('review_events').select('id,review_id,action,message,actor,created_at').order('created_at',{ascending:true}).limit(5000)
  ]);
  if(a.error||b.error)return jsonError((a.error||b.error)?.message||'Failed to load',500);
- return Response.json({items:a.data,events:b.data,admin:user.admin});
+ // Should the list ever outgrow even that, say so rather than quietly ending.
+ return Response.json({items:a.data,events:b.data,admin:user.admin,truncated:(a.data?.length||0)>=REVIEW_LIMIT});
 }
 export async function POST(req:Request){
  const blocked=configGate();if(blocked)return blocked;
