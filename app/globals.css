@@ -67,7 +67,12 @@
 .compactReviews{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
 /* A long approval list is the point of this view, so it scrolls as far as the
    screen allows rather than inside the 350px box the data panels use. */
-.compactReviews .tableScroll{max-height:calc(100vh - 290px)}
+/* Fill the window, but on a short laptop screen stop shrinking and let the
+   page scroll instead: five visible rows out of 132 is not a list. */
+.compactReviews .tableScroll{max-height:calc(100vh - 235px);min-height:430px}
+.sectionFilter{margin:-8px 0 18px}
+.sectionFilter .chip b{font-weight:800;color:#8b9ab1;margin-left:2px}
+.sectionFilter .chip.on b{color:#cfe0ff}
 .compactReviews table{font-size:12.5px}
 .compactReviews th,.compactReviews td{padding:13px 16px;vertical-align:middle}
 .compactReviews td.cellTitle{font-weight:700;color:#21385d;white-space:normal;min-width:170px}

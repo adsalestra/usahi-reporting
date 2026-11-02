@@ -36,6 +36,33 @@ export function shortUrl(raw:string):string{
  return url.hostname.replace(/^www\./,'')+url.pathname.replace(/\/$/,'')+url.search;
 }
 
+/** The names the team uses for sections whose folder does not read well on a
+ *  chip. Anything not listed falls back to its own folder name. */
+const SECTIONS:Record<string,string>={
+ 'homeowners-resources':'Blog posts',
+ 'service-areas':'Service areas',
+ 'impact-windows':'Impact windows',
+ 'impact-doors':'Impact doors',
+ 'interior-doors':'Interior doors',
+ 'roofing':'Roofing'
+};
+
+/** The part of the site a page belongs to, read from its own address. A quarter
+ *  of work arrives as one flat list of 96 pages; this is what lets the screen
+ *  put the blog posts, the service areas and the roofing pages back apart. */
+export function categoryOf(raw:string):string{
+ let url:URL;
+ try{url=new URL(raw)}catch{return 'Other pages'}
+ if(url.hostname==='share.google')return 'Google Business Profile';
+ const path=url.pathname.replace(/^\/+|\/+$/g,'');
+ const first=path.split('/')[0];
+ if(!first)return 'Other pages';
+ // A page standing on its own at the top level, like /reviews, is not a section
+ // of the site and would only add a chip matching one row.
+ if(!SECTIONS[first]&&!path.includes('/'))return 'Other pages';
+ return SECTIONS[first]||first.replace(/[-_]+/g,' ').replace(/^\w/,c=>c.toUpperCase());
+}
+
 export type PastedLink={title:string;url:string};
 
 /** Every http(s) address in `text`, one per line, in the order pasted and with
